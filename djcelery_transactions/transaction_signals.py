@@ -39,7 +39,7 @@ class TransactionSignals(object):
     """A container for the transaction signals."""
 
     def __init__(self):
-        self.post_commit = Signal()
+        self.post_commit = Signal(providing_args=['sid'])
         self.post_rollback = Signal()
 
 
@@ -68,7 +68,7 @@ def __patched__exit__(self, exc_type, exc_value, traceback):
                 if sid is not None:
                     try:
                         connection.savepoint_commit(sid)
-                        transaction.signals.post_commit.send(None)
+                        transaction.signals.post_commit.send(None, sid=sid)
                     except DatabaseError:
                         try:
                             connection.savepoint_rollback(sid)
@@ -83,7 +83,7 @@ def __patched__exit__(self, exc_type, exc_value, traceback):
                 # Commit transaction
                 try:
                     connection.commit()
-                    transaction.signals.post_commit.send(None)
+                    transaction.signals.post_commit.send(None, sid=None)
                 except DatabaseError:
                     try:
                         connection.rollback()

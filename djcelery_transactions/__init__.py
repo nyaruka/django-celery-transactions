@@ -1,12 +1,14 @@
 # coding=utf-8
-from celery.task import task as base_task, Task
-from celery import current_app
-import djcelery_transactions.transaction_signals
 from django.db import transaction
+from django.db.transaction import get_connection
 from functools import partial
 import threading
 
-from django.db.transaction import get_connection
+from celery import current_app
+from celery.task import task as base_task, Task
+from djcelery_transactions.settings import EXEC_ON_SAVEPOINT
+import djcelery_transactions.transaction_signals
+
 
 # Thread-local data (task queue).
 _thread_data = threading.local()
@@ -72,6 +74,9 @@ def _send_tasks(**kwargs):
     Called after a transaction is committed or we leave a transaction
     management block in which no changes were made (effectively a commit).
     """
+    sid = kwargs.pop('sid', None)
+    if sid is not None and not EXEC_ON_SAVEPOINT:
+        return
     queue = _get_task_queue()
     while queue:
         cls, args, kwargs = queue.pop(0)
